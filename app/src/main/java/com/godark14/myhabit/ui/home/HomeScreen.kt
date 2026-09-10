@@ -1,4 +1,7 @@
+@file:OptIn(ExperimentalFoundationApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.godark14.myhabit.ui.home
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -42,6 +45,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,6 +61,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
 import kotlinx.coroutines.launch
@@ -65,6 +70,7 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     repository: HabitRepository,
     onAddHabit: () -> Unit,
+    onEditHabit: (Long) -> Unit,
     onOpenProgress: () -> Unit,
     onOpenProfile: () -> Unit
 ) {
@@ -72,8 +78,15 @@ fun HomeScreen(
     val habits by repository.getAllHabits().collectAsState(initial = emptyList())
 
     val today = remember { LocalDate.now() }
+    var selectedDate by remember { mutableStateOf(today) }
+    val isToday = selectedDate == today
     val greeting = remember { greetingForTime(LocalTime.now()) }
-    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope()
+
+    var completedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    LaunchedEffect(habits, selectedDate) {
+        completedIds = repository.getCompletedHabitIds(selectedDate.toEpochDay())
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -90,12 +103,12 @@ fun HomeScreen(
                 ) {
                     Column {
                         Text(
-                            text = "$greeting, ${user?.name ?: ""}",
+                            text = if (isToday) "$greeting, ${user?.name ?: ""}" else user?.name ?: "",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = today.format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale.ENGLISH)),
+                            text = selectedDate.format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale.ENGLISH)),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -117,7 +130,11 @@ fun HomeScreen(
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
-                WeekSelector(today = today)
+                WeekSelector(
+                    today = today,
+                    selectedDate = selectedDate,
+                    onDateSelected = { date -> if (!date.isAfter(today)) selectedDate = date }
+                )
                 Spacer(modifier = Modifier.height(20.dp))
                 ReminderBanner()
                 Spacer(modifier = Modifier.height(24.dp))
@@ -127,7 +144,7 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Daily routine",
+                        text = if (isToday) "Daily routine" else "Routine that day",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -142,9 +159,17 @@ fun HomeScreen(
             }
 
             items(habits) { habit ->
-                HabitRow(habit = habit, onToggle = {
-                    coroutineScope.launch { repository.toggleHabitCompletion(habit) }
-                })
+                HabitRow(
+                    habit = habit,
+                    isCompleted = habit.id in completedIds,
+                    isEditable = isToday,
+                    onToggle = {
+                        if (isToday) {
+                            coroutineScope.launch { repository.toggleHabitCompletion(habit) }
+                        }
+                    },
+                    onLongPress = { onEditHabit(habit.id) }
+                )
                 Spacer(modifier = Modifier.height(12.dp))
             }
         }
@@ -163,7 +188,11 @@ fun HomeScreen(
 }
 
 @Composable
-private fun WeekSelector(today: LocalDate) {
+private fun WeekSelector(
+    today: LocalDate,
+    selectedDate: LocalDate,
+    onDateSelected: (LocalDate) -> Unit
+) {
     val startOfWeek = today.minusDays(today.dayOfWeek.value.toLong() - 1)
     val days = (0..6).map { startOfWeek.plusDays(it.toLong()) }
 
@@ -172,9 +201,11 @@ private fun WeekSelector(today: LocalDate) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         days.forEach { date ->
-            val isSelected = date == today
+            val isSelected = date == selectedDate
+            val isFuture = date.isAfter(today)
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.clickable(enabled = !isFuture) { onDateSelected(date) }
             ) {
                 Text(
                     text = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.ENGLISH),
@@ -187,15 +218,20 @@ private fun WeekSelector(today: LocalDate) {
                         .size(36.dp)
                         .clip(CircleShape)
                         .background(
-                            if (isSelected) MaterialTheme.colorScheme.onBackground
-                            else MaterialTheme.colorScheme.surface
+                            when {
+                                isSelected -> MaterialTheme.colorScheme.onBackground
+                                else -> MaterialTheme.colorScheme.surface
+                            }
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = date.dayOfMonth.toString(),
-                        color = if (isSelected) MaterialTheme.colorScheme.surface
-                        else MaterialTheme.colorScheme.onSurface,
+                        color = when {
+                            isSelected -> MaterialTheme.colorScheme.surface
+                            isFuture -> MaterialTheme.colorScheme.onSurfaceVariant
+                            else -> MaterialTheme.colorScheme.onSurface
+                        },
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -281,13 +317,22 @@ private fun ReminderBanner() {
 }
 
 @Composable
-private fun HabitRow(habit: Habit, onToggle: () -> Unit) {
+private fun HabitRow(
+    habit: Habit,
+    isCompleted: Boolean,
+    isEditable: Boolean,
+    onToggle: () -> Unit,
+    onLongPress: () -> Unit
+) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isEditable) MaterialTheme.colorScheme.surface
+            else MaterialTheme.colorScheme.surfaceVariant
+        ),
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onToggle() }
+            .combinedClickable(onClick = onToggle, onLongClick = onLongPress)
     ) {
         Row(
             modifier = Modifier
@@ -298,9 +343,9 @@ private fun HabitRow(habit: Habit, onToggle: () -> Unit) {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = if (habit.isCompletedToday) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
+                    imageVector = if (isCompleted) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
                     contentDescription = null,
-                    tint = if (habit.isCompletedToday) MaterialTheme.colorScheme.primary
+                    tint = if (isCompleted) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.outline
                 )
                 Spacer(modifier = Modifier.width(12.dp))

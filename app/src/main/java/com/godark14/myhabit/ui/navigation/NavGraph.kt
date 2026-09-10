@@ -23,6 +23,9 @@ sealed class Screen(val route: String) {
     object Welcome : Screen("welcome")
     object Home : Screen("home")
     object NewHabit : Screen("new_habit")
+    object EditHabit : Screen("edit_habit/{habitId}") {
+        fun createRoute(habitId: Long) = "edit_habit/$habitId"
+    }
     object Progress : Screen("progress")
     object Profile : Screen("profile")
 }
@@ -54,14 +57,30 @@ fun NavGraph(
             HomeScreen(
                 repository = repository,
                 onAddHabit = { navController.navigate(Screen.NewHabit.route) },
+                onEditHabit = { habitId -> navController.navigate(Screen.EditHabit.createRoute(habitId)) },
                 onOpenProgress = { navController.navigate(Screen.Progress.route) },
-                onOpenProfile = { navController.navigate(Screen.Profile.route) })
+                onOpenProfile = { navController.navigate(Screen.Profile.route) }
+            )
         }
         composable(Screen.NewHabit.route) {
             NewHabitScreen(
                 repository = repository,
+                habitId = null,
                 onHabitSaved = { navController.popBackStack() },
-                onCancel = { navController.popBackStack() })
+                onCancel = { navController.popBackStack() }
+            )
+        }
+        composable(
+            route = Screen.EditHabit.route,
+            arguments = listOf(androidx.navigation.navArgument("habitId") { type = androidx.navigation.NavType.LongType })
+        ) { backStackEntry ->
+            val habitId = backStackEntry.arguments?.getLong("habitId")
+            NewHabitScreen(
+                repository = repository,
+                habitId = habitId,
+                onHabitSaved = { navController.popBackStack() },
+                onCancel = { navController.popBackStack() }
+            )
         }
         composable(Screen.Progress.route) {
             ProgressScreen(

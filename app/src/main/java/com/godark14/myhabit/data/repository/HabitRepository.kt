@@ -111,4 +111,14 @@ class HabitRepository(
         if (totalCompletions >= 10) badgeDao.unlockBadge("ten_completions", now)
         if (totalCompletions >= 50) badgeDao.unlockBadge("fifty_completions", now)
     }
+
+    suspend fun getHabitById(habitId: Long): Habit? = habitDao.getHabitById(habitId)
+    suspend fun updateHabit(habit: Habit) {
+        habitDao.updateHabit(habit)
+        checkAndUnlockBadges()
+    }
+    suspend fun getCompletedHabitIds(epochDay: Long): Set<Long> {
+        val habits = habitDao.getAllHabits().first()
+        return habits.filter { completionDao.countForDay(it.id, epochDay) > 0 }.map { it.id }.toSet()
+    }
 }

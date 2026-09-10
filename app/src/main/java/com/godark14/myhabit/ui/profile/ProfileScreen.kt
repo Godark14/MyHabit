@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -36,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -176,30 +178,40 @@ private fun BadgeCell(badge: Badge) {
             .fillMaxWidth()
             .aspectRatio(1f)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = badge.icon,
-                style = MaterialTheme.typography.headlineMedium,
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
                 modifier = Modifier
-                    .then(
-                        if (!badge.isUnlocked) Modifier else Modifier
-                    )
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = badge.title,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium,
-                maxLines = 2,
-                color = if (badge.isUnlocked) MaterialTheme.colorScheme.onSurface
-                else MaterialTheme.colorScheme.onSurfaceVariant
-            )
+                    .fillMaxSize()
+                    .padding(8.dp)
+                    .alpha(if (badge.isUnlocked) 1f else 0.35f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = badge.icon,
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = badge.title,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 2,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            if (!badge.isUnlocked) {
+                Icon(
+                    imageVector = Icons.Filled.Lock,
+                    contentDescription = "Locked",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .size(16.dp)
+                )
+            }
         }
     }
 }
