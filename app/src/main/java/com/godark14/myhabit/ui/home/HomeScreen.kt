@@ -1,5 +1,17 @@
 package com.godark14.myhabit.ui.home
-
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import com.godark14.myhabit.reminder.ReminderScheduler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +34,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Circle
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -31,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -43,6 +57,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
 import kotlinx.coroutines.launch
 
@@ -188,9 +203,19 @@ private fun WeekSelector(today: LocalDate) {
         }
     }
 }
-
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun ReminderBanner() {
+    val context = LocalContext.current
+    var showTimePicker by remember { mutableStateOf(false) }
+    var savedTime by remember { mutableStateOf(ReminderScheduler.getSavedTime(context)) }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) showTimePicker = true
+    }
+
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(20.dp),
@@ -204,10 +229,54 @@ private fun ReminderBanner() {
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Never miss your morning routine! Set a reminder to stay on track.",
+                text = if (savedTime != null)
+                    "Reminder set for %02d:%02d daily.".format(savedTime!!.first, savedTime!!.second)
+                else
+                    "Never miss your morning routine! Set a reminder to stay on track.",
                 style = MaterialTheme.typography.bodyMedium
             )
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        val hasPermission = ContextCompat.checkSelfPermission(
+                            context, Manifest.permission.POST_NOTIFICATIONS
+                        ) == PackageManager.PERMISSION_GRANTED
+                        if (hasPermission) showTimePicker = true
+                        else notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        showTimePicker = true
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = MaterialTheme.colorScheme.onSecondary
+                )
+            ) {
+                Text(if (savedTime != null) "Change" else "Set Now")
+            }
         }
+    }
+
+    if (showTimePicker) {
+        val initialHour = savedTime?.first ?: 8
+        val initialMinute = savedTime?.second ?: 0
+        val timePickerState = rememberTimePickerState(initialHour = initialHour, initialMinute = initialMinute)
+
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    ReminderScheduler.scheduleDailyReminder(context, timePickerState.hour, timePickerState.minute)
+                    savedTime = timePickerState.hour to timePickerState.minute
+                    showTimePicker = false
+                }) { Text("Confirm") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+            },
+            text = { TimePicker(state = timePickerState) }
+        )
     }
 }
 
