@@ -4,34 +4,25 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
+import com.godark14.myhabit.data.model.Habit
 import java.util.Calendar
 
 object ReminderScheduler {
-    private const val PREFS_NAME = "myhabit_prefs"
-    private const val KEY_HOUR = "reminder_hour"
-    private const val KEY_MINUTE = "reminder_minute"
-    private const val REQUEST_CODE = 1001
+    private const val REQUEST_CODE_OFFSET = 5000
 
-    private fun prefs(context: Context): SharedPreferences =
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-
-    fun getSavedTime(context: Context): Pair<Int, Int>? {
-        val p = prefs(context)
-        if (!p.contains(KEY_HOUR)) return null
-        return p.getInt(KEY_HOUR, 8) to p.getInt(KEY_MINUTE, 0)
-    }
-
-    fun scheduleDailyReminder(context: Context, hour: Int, minute: Int) {
-        prefs(context).edit()
-            .putInt(KEY_HOUR, hour)
-            .putInt(KEY_MINUTE, minute)
-            .apply()
+    fun scheduleHabitReminder(context: Context, habit: Habit) {
+        val hour = habit.reminderHour ?: return
+        val minute = habit.reminderMinute ?: return
 
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(context, ReminderReceiver::class.java)
+        val intent = Intent(context, ReminderReceiver::class.java).apply {
+            putExtra("habitId", habit.id)
+            putExtra("habitName", habit.name)
+        }
         val pendingIntent = PendingIntent.getBroadcast(
-            context, REQUEST_CODE, intent,
+            context,
+            (REQUEST_CODE_OFFSET + habit.id).toInt(),
+            intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -52,14 +43,15 @@ object ReminderScheduler {
         )
     }
 
-    fun cancelReminder(context: Context) {
+    fun cancelHabitReminder(context: Context, habitId: Long) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(context, ReminderReceiver::class.java)
         val pendingIntent = PendingIntent.getBroadcast(
-            context, REQUEST_CODE, intent,
+            context,
+            (REQUEST_CODE_OFFSET + habitId).toInt(),
+            intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         alarmManager.cancel(pendingIntent)
-        prefs(context).edit().remove(KEY_HOUR).remove(KEY_MINUTE).apply()
     }
 }

@@ -8,13 +8,15 @@ data class Habit(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val name: String,
-    val icon: String,              // nom d'icône ou emoji utilisé pour l'affichage
+    val icon: String,
     val durationMinutes: Int,
-    val repeatDays: String,        // ex: "M,T,W" -> on parsera en liste
+    val repeatDays: String,
     val remindersEnabled: Boolean = false,
+    val reminderHour: Int? = null,
+    val reminderMinute: Int? = null,
     val goalAmount: String? = null,
-    val goalDate: Long? = null,    // timestamp epoch, nullable
+    val goalDate: Long? = null,
     val streak: Int = 0,
     val isCompletedToday: Boolean = false,
-    val lastCompletedDate: Long? = null // pour savoir si le streak doit être reset
+    val lastCompletedDate: Long? = null
 )

@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.godark14.myhabit.data.repository.HabitRepository
 import com.godark14.myhabit.ui.navigation.NavGraph
 import com.godark14.myhabit.ui.navigation.Screen
 import com.godark14.myhabit.ui.theme.MyHabitTheme
@@ -40,7 +41,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AppRoot(
-    repository: com.godark14.myhabit.data.repository.HabitRepository,
+    repository: HabitRepository,
     modifier: Modifier = Modifier
 ) {
     var startDestination by remember { mutableStateOf<String?>(null) }
@@ -48,11 +49,10 @@ fun AppRoot(
     LaunchedEffect(Unit) {
         repository.seedBadgesIfNeeded()
         val hasUser = repository.hasUser()
-        startDestination = if (hasUser) Screen.Home.route else Screen.Welcome.route
+        startDestination = if (hasUser) Screen.Main.route else Screen.Welcome.route
     }
 
     startDestination?.let {
         NavGraph(repository = repository, startDestination = it, modifier = modifier)
     }
-
 }

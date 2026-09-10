@@ -11,7 +11,7 @@ import com.godark14.myhabit.data.model.User
 
 @Database(
     entities = [User::class, Habit::class, Badge::class, HabitCompletion::class],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -19,7 +19,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun habitDao(): HabitDao
     abstract fun badgeDao(): BadgeDao
     abstract fun habitCompletionDao(): HabitCompletionDao
-
 
     companion object {
         @Volatile
