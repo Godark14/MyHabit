@@ -11,7 +11,7 @@ import com.godark14.myhabit.data.model.User
 
 @Database(
     entities = [User::class, Habit::class, Badge::class, HabitCompletion::class],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -46,7 +46,7 @@ fun MainScreen(
 ) {
     var currentTab by remember { mutableStateOf(MainTab.HOME) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp)) {
         when (currentTab) {
             MainTab.HOME -> HomeScreen(
                 repository = repository,

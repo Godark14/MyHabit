@@ -45,6 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.godark14.myhabit.data.repository.HabitRepository
+import com.godark14.myhabit.ui.theme.HabitColors
 import com.godark14.myhabit.ui.theme.ProgressCopper
 import com.godark14.myhabit.ui.theme.ProgressMaroon
 import com.godark14.myhabit.ui.theme.ProgressOlive
@@ -126,7 +127,7 @@ fun ProgressScreen(
                         ProgressBarItem(
                             label = habit.name,
                             percent = habitRates[habit.id] ?: 0,
-                            color = barColors[index % barColors.size]
+                            color = HabitColors.fromHex(habit.colorHex)
                         )
                     }
                 }

@@ -55,10 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.godark14.myhabit.data.model.Habit
 import com.godark14.myhabit.data.repository.HabitRepository
-import com.godark14.myhabit.ui.theme.ProgressCopper
-import com.godark14.myhabit.ui.theme.ProgressMaroon
-import com.godark14.myhabit.ui.theme.ProgressOlive
-import com.godark14.myhabit.ui.theme.ProgressPink
+import com.godark14.myhabit.ui.theme.HabitColors
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -68,8 +65,6 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
-
-private val habitAvatarColors = listOf(ProgressMaroon, ProgressCopper, ProgressOlive, ProgressPink)
 
 @Composable
 fun HomeScreen(
@@ -181,10 +176,9 @@ fun HomeScreen(
             }
 
             items(habits) { habit ->
-                val colorIndex = (habit.id % habitAvatarColors.size).toInt()
                 HabitRow(
                     habit = habit,
-                    avatarColor = habitAvatarColors[colorIndex],
+                    avatarColor = HabitColors.fromHex(habit.colorHex),
                     isCompleted = habit.id in completedIds,
                     isEditable = isToday,
                     onToggle = {

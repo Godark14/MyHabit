@@ -3,6 +3,7 @@
 package com.godark14.myhabit.ui.newhabit
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import com.godark14.myhabit.data.model.Habit
 import com.godark14.myhabit.data.repository.HabitRepository
 import com.godark14.myhabit.reminder.ReminderScheduler
+import com.godark14.myhabit.ui.theme.HabitColors
 import kotlinx.coroutines.launch
 
 private val allDays = listOf("M", "T", "W", "T", "F", "S", "S")
@@ -73,6 +75,7 @@ fun NewHabitScreen(
     var showReminderTimePicker by remember { mutableStateOf(false) }
     var selectedDays by remember { mutableStateOf(setOf<Int>()) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var selectedColorHex by remember { mutableStateOf(HabitColors.palette.first().first) }
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(habitId) {
@@ -85,6 +88,7 @@ fun NewHabitScreen(
                 reminderHour = it.reminderHour ?: 8
                 reminderMinute = it.reminderMinute ?: 0
                 selectedDays = it.repeatDays.split(",").mapNotNull { d -> d.toIntOrNull() }.toSet()
+                selectedColorHex = it.colorHex
             }
         }
     }
@@ -138,6 +142,28 @@ fun NewHabitScreen(
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        SectionCard {
+            Text(
+                "Color",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                HabitColors.palette.forEach { (hex, color) ->
+                    ColorSwatch(
+                        color = color,
+                        isSelected = hex == selectedColorHex,
+                        onClick = { selectedColorHex = hex }
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -227,6 +253,7 @@ fun NewHabitScreen(
                         val savedHabit = if (isEditing && existingHabit != null) {
                             val updated = existingHabit!!.copy(
                                 name = name.trim(),
+                                colorHex = selectedColorHex,
                                 repeatDays = selectedDays.joinToString(","),
                                 remindersEnabled = remindersEnabled,
                                 reminderHour = if (remindersEnabled) reminderHour else null,
@@ -238,6 +265,7 @@ fun NewHabitScreen(
                             val newHabit = Habit(
                                 name = name.trim(),
                                 icon = "default",
+                                colorHex = selectedColorHex,
                                 durationMinutes = 10,
                                 repeatDays = selectedDays.joinToString(","),
                                 remindersEnabled = remindersEnabled,
@@ -380,4 +408,18 @@ private fun DayCircle(label: String, isSelected: Boolean, onClick: () -> Unit) {
             fontWeight = FontWeight.SemiBold
         )
     }
+}
+@Composable
+private fun ColorSwatch(color: androidx.compose.ui.graphics.Color, isSelected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .clip(CircleShape)
+            .background(color)
+            .then(
+                if (isSelected) Modifier.border(3.dp, MaterialTheme.colorScheme.onBackground, CircleShape)
+                else Modifier
+            )
+            .clickable(onClick = onClick)
+    )
 }

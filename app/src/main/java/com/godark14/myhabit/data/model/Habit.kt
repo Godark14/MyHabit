@@ -9,6 +9,7 @@ data class Habit(
     val id: Long = 0,
     val name: String,
     val icon: String,
+    val colorHex: String = "#5A3728",
     val durationMinutes: Int,
     val repeatDays: String,
     val remindersEnabled: Boolean = false,
