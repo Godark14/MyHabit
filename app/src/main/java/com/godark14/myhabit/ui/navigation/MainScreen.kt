@@ -46,7 +46,11 @@ fun MainScreen(
 ) {
     var currentTab by remember { mutableStateOf(MainTab.HOME) }
 
-    Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 10.dp, vertical = 10.dp)
+    ) {
         when (currentTab) {
             MainTab.HOME -> HomeScreen(
                 repository = repository,
@@ -54,10 +58,12 @@ fun MainScreen(
                 onOpenProgress = { currentTab = MainTab.PROGRESS },
                 onOpenProfile = { currentTab = MainTab.PROFILE }
             )
+
             MainTab.PROGRESS -> ProgressScreen(
                 repository = repository,
                 onClose = { currentTab = MainTab.HOME }
             )
+
             MainTab.PROFILE -> ProfileScreen(
                 repository = repository,
                 onClose = { currentTab = MainTab.HOME }
@@ -100,9 +106,18 @@ private fun FloatingNavBar(
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            NavIcon(icon = Icons.Filled.Home, selected = currentTab == MainTab.HOME) { onTabSelected(MainTab.HOME) }
-            NavIcon(icon = Icons.Filled.BarChart, selected = currentTab == MainTab.PROGRESS) { onTabSelected(MainTab.PROGRESS) }
-            NavIcon(icon = Icons.Filled.Person, selected = currentTab == MainTab.PROFILE) { onTabSelected(MainTab.PROFILE) }
+            NavIcon(
+                icon = Icons.Filled.Home,
+                selected = currentTab == MainTab.HOME
+            ) { onTabSelected(MainTab.HOME) }
+            NavIcon(
+                icon = Icons.Filled.BarChart,
+                selected = currentTab == MainTab.PROGRESS
+            ) { onTabSelected(MainTab.PROGRESS) }
+            NavIcon(
+                icon = Icons.Filled.Person,
+                selected = currentTab == MainTab.PROFILE
+            ) { onTabSelected(MainTab.PROFILE) }
         }
     }
 }
