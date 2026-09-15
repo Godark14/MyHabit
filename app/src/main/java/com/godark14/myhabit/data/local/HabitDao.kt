@@ -25,4 +25,7 @@ interface HabitDao {
 
     @Query("SELECT * FROM habit WHERE id = :habitId")
     suspend fun getHabitById(habitId: Long): Habit?
+
+    @Query("SELECT DISTINCT habitId FROM habit_completion WHERE epochDay = :epochDay")
+    suspend fun getCompletedHabitIdsForDay(epochDay: Long): List<Long>
 }

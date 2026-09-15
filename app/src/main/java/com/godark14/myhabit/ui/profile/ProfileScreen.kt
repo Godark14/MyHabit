@@ -4,6 +4,9 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -208,6 +212,17 @@ fun ProfileScreen(
 
 @Composable
 private fun BadgeCell(badge: Badge) {
+    val alpha by animateFloatAsState(
+        targetValue = if (badge.isUnlocked) 1f else 0.35f,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 400),
+        label = "badgeAlpha"
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (badge.isUnlocked) 1f else 0.9f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "badgeScale"
+    )
+
     Card(
         colors = CardDefaults.cardColors(
             containerColor = if (badge.isUnlocked) MaterialTheme.colorScheme.surface
@@ -218,13 +233,14 @@ private fun BadgeCell(badge: Badge) {
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
+            .scale(scale)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(8.dp)
-                    .alpha(if (badge.isUnlocked) 1f else 0.35f),
+                    .alpha(alpha),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -251,6 +267,7 @@ private fun BadgeCell(badge: Badge) {
                         .align(Alignment.TopEnd)
                         .padding(6.dp)
                         .size(16.dp)
+                        .alpha(1f - alpha + 0.35f)
                 )
             }
         }

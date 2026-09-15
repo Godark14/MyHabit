@@ -1,5 +1,7 @@
 package com.godark14.myhabit.data.repository
 
+import android.content.Context
+import androidx.glance.appwidget.updateAll
 import com.godark14.myhabit.data.local.BadgeDao
 import com.godark14.myhabit.data.local.HabitCompletionDao
 import com.godark14.myhabit.data.local.HabitDao
@@ -8,6 +10,7 @@ import com.godark14.myhabit.data.model.Badge
 import com.godark14.myhabit.data.model.Habit
 import com.godark14.myhabit.data.model.HabitCompletion
 import com.godark14.myhabit.data.model.User
+import com.godark14.myhabit.widget.HabitWidget
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
@@ -16,7 +19,8 @@ class HabitRepository(
     private val userDao: UserDao,
     private val habitDao: HabitDao,
     private val badgeDao: BadgeDao,
-    private val completionDao: HabitCompletionDao
+    private val completionDao: HabitCompletionDao,
+    private val appContext: Context
 ) {
     // User
     fun getUser(): Flow<User?> = userDao.getUser()
@@ -27,21 +31,32 @@ class HabitRepository(
     // Habits
     fun getAllHabits(): Flow<List<Habit>> = habitDao.getAllHabits()
 
+    suspend fun getHabitById(habitId: Long): Habit? = habitDao.getHabitById(habitId)
+
     suspend fun addHabit(habit: Habit): Long {
         val id = habitDao.insertHabit(habit)
         seedBadgesIfNeeded()
         checkAndUnlockBadges()
+        refreshWidget()
         return id
     }
 
-    suspend fun deleteHabit(habit: Habit) = habitDao.deleteHabit(habit)
+    suspend fun updateHabit(habit: Habit) {
+        habitDao.updateHabit(habit)
+        checkAndUnlockBadges()
+        refreshWidget()
+    }
+
+    suspend fun deleteHabit(habit: Habit) {
+        habitDao.deleteHabit(habit)
+        refreshWidget()
+    }
 
     suspend fun toggleHabitCompletion(habit: Habit) {
         val today = LocalDate.now().toEpochDay()
         val alreadyDoneToday = completionDao.countForDay(habit.id, today) > 0
 
         if (alreadyDoneToday) {
-            // Annuler la complétion du jour
             completionDao.deleteForDay(habit.id, today)
             val newStreak = (habit.streak - 1).coerceAtLeast(0)
             habitDao.updateHabit(
@@ -62,19 +77,19 @@ class HabitRepository(
                     lastCompletedDate = today
                 )
             )
-            // +10 points à l'utilisateur pour chaque complétion
             userDao.getUser().first()?.let { user ->
                 userDao.updateUser(user.copy(points = user.points + 10))
             }
         }
         checkAndUnlockBadges()
+        refreshWidget()
     }
 
     // Progrès (7 derniers jours)
     suspend fun getWeeklyCompletionRate(habit: Habit): Int {
         val today = LocalDate.now().toEpochDay()
         val weekAgo = today - 6
-        val expectedDays = 7 // simplification : sur 7 jours glissants, peu importe repeatDays pour l'instant
+        val expectedDays = 7
         val done = completionDao.countForHabitInRange(habit.id, weekAgo, today)
         return ((done.toFloat() / expectedDays) * 100).toInt().coerceIn(0, 100)
     }
@@ -86,6 +101,10 @@ class HabitRepository(
 
     suspend fun getBestStreak(): Int {
         return habitDao.getAllHabits().first().maxOfOrNull { it.streak } ?: 0
+    }
+
+    suspend fun getCompletedHabitIds(epochDay: Long): Set<Long> {
+        return completionDao.getCompletedHabitIdsForDay(epochDay).toSet()
     }
 
     // Badges
@@ -112,13 +131,7 @@ class HabitRepository(
         if (totalCompletions >= 50) badgeDao.unlockBadge("fifty_completions", now)
     }
 
-    suspend fun getHabitById(habitId: Long): Habit? = habitDao.getHabitById(habitId)
-    suspend fun updateHabit(habit: Habit) {
-        habitDao.updateHabit(habit)
-        checkAndUnlockBadges()
-    }
-    suspend fun getCompletedHabitIds(epochDay: Long): Set<Long> {
-        val habits = habitDao.getAllHabits().first()
-        return habits.filter { completionDao.countForDay(it.id, epochDay) > 0 }.map { it.id }.toSet()
+    private suspend fun refreshWidget() {
+        HabitWidget().updateAll(appContext)
     }
 }

@@ -1,5 +1,7 @@
 package com.godark14.myhabit.ui.navigation
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -51,23 +53,29 @@ fun MainScreen(
             .fillMaxSize()
             .padding(horizontal = 10.dp, vertical = 10.dp)
     ) {
-        when (currentTab) {
-            MainTab.HOME -> HomeScreen(
-                repository = repository,
-                onEditHabit = onEditHabit,
-                onOpenProgress = { currentTab = MainTab.PROGRESS },
-                onOpenProfile = { currentTab = MainTab.PROFILE }
-            )
+        Crossfade(
+            targetState = currentTab,
+            animationSpec = tween(durationMillis = 400, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+            label = "tabCrossfade"
+        ) { tab ->
+            when (tab) {
+                MainTab.HOME -> HomeScreen(
+                    repository = repository,
+                    onEditHabit = onEditHabit,
+                    onOpenProgress = { currentTab = MainTab.PROGRESS },
+                    onOpenProfile = { currentTab = MainTab.PROFILE }
+                )
 
-            MainTab.PROGRESS -> ProgressScreen(
-                repository = repository,
-                onClose = { currentTab = MainTab.HOME }
-            )
+                MainTab.PROGRESS -> ProgressScreen(
+                    repository = repository,
+                    onClose = { currentTab = MainTab.HOME }
+                )
 
-            MainTab.PROFILE -> ProfileScreen(
-                repository = repository,
-                onClose = { currentTab = MainTab.HOME }
-            )
+                MainTab.PROFILE -> ProfileScreen(
+                    repository = repository,
+                    onClose = { currentTab = MainTab.HOME }
+                )
+            }
         }
 
         Row(

@@ -2,6 +2,9 @@
 
 package com.godark14.myhabit.ui.home
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -50,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -86,6 +90,10 @@ fun HomeScreen(
     var completedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     LaunchedEffect(habits, selectedDate) {
         completedIds = repository.getCompletedHabitIds(selectedDate.toEpochDay())
+    }
+
+    val visibleHabits = remember(habits, selectedDate) {
+        habits.filter { habit -> isHabitScheduledOn(habit, selectedDate) }
     }
 
     Box(
@@ -171,11 +179,19 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 if (habits.isEmpty()) {
-                    EmptyState()
+                    EmptyState(
+                        title = "No habits yet",
+                        message = "Tap the + button to create your first habit."
+                    )
+                } else if (visibleHabits.isEmpty()) {
+                    EmptyState(
+                        title = "Nothing scheduled",
+                        message = "No habits are set for this day."
+                    )
                 }
             }
 
-            items(habits) { habit ->
+            items(visibleHabits) { habit ->
                 HabitRow(
                     habit = habit,
                     avatarColor = HabitColors.fromHex(habit.colorHex),
@@ -222,8 +238,15 @@ fun HomeScreen(
     }
 }
 
+private fun isHabitScheduledOn(habit: Habit, date: LocalDate): Boolean {
+    val days = habit.repeatDays.split(",").mapNotNull { it.toIntOrNull() }.toSet()
+    if (days.isEmpty()) return true
+    val dayIndex = date.dayOfWeek.value - 1
+    return days.contains(dayIndex)
+}
+
 @Composable
-private fun EmptyState() {
+private fun EmptyState(title: String, message: String) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(20.dp),
@@ -236,13 +259,13 @@ private fun EmptyState() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "No habits yet",
+                text = title,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Tap the + button to create your first habit.",
+                text = message,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -355,6 +378,16 @@ private fun HabitRow(
     onToggle: () -> Unit,
     onLongPress: () -> Unit
 ) {
+    val iconScale by animateFloatAsState(
+        targetValue = if (isCompleted) 1.15f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "iconScale"
+    )
+    val backgroundAlpha by animateFloatAsState(
+        targetValue = if (isCompleted) 0.18f else 0.10f,
+        label = "bgAlpha"
+    )
+
     Card(
         colors = CardDefaults.cardColors(
             containerColor = if (isEditable) MaterialTheme.colorScheme.surface
@@ -378,14 +411,16 @@ private fun HabitRow(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(avatarColor.copy(alpha = 0.18f)),
+                        .background(avatarColor.copy(alpha = backgroundAlpha)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = if (isCompleted) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
                         contentDescription = null,
                         tint = if (isCompleted) avatarColor else MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier
+                            .size(22.dp)
+                            .scale(iconScale)
                     )
                 }
                 Spacer(modifier = Modifier.width(14.dp))

@@ -12,7 +12,11 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.godark14.myhabit.MainActivity
+import com.godark14.myhabit.MyHabitApplication
 import com.godark14.myhabit.R
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -42,6 +46,23 @@ class ReminderReceiver : BroadcastReceiver() {
         ) {
             val notificationId = if (habitId >= 0) (5000 + habitId).toInt() else 2001
             NotificationManagerCompat.from(context).notify(notificationId, notification)
+        }
+
+        // Alarmes exactes = usage unique, on replanifie pour demain
+        if (habitId >= 0) {
+            val pendingResult = goAsync()
+            val appContext = context.applicationContext
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val repository = (appContext as MyHabitApplication).repository
+                    val habit = repository.getHabitById(habitId)
+                    if (habit != null && habit.remindersEnabled) {
+                        ReminderScheduler.scheduleHabitReminder(appContext, habit)
+                    }
+                } finally {
+                    pendingResult.finish()
+                }
+            }
         }
     }
 

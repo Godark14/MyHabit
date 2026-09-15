@@ -34,7 +34,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.ui.draw.clip
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
@@ -47,6 +46,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -69,13 +69,15 @@ fun NewHabitScreen(
     val isEditing = habitId != null
     var existingHabit by remember { mutableStateOf<Habit?>(null) }
     var name by remember { mutableStateOf("") }
+    var selectedColorHex by remember { mutableStateOf(HabitColors.palette.first().first) }
     var remindersEnabled by remember { mutableStateOf(true) }
     var reminderHour by remember { mutableStateOf(8) }
     var reminderMinute by remember { mutableStateOf(0) }
     var showReminderTimePicker by remember { mutableStateOf(false) }
     var selectedDays by remember { mutableStateOf(setOf<Int>()) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
-    var selectedColorHex by remember { mutableStateOf(HabitColors.palette.first().first) }
+    var showExactAlarmDialog by remember { mutableStateOf(false) }
+    var pendingExactAlarmHabit by remember { mutableStateOf<Habit?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(habitId) {
@@ -84,11 +86,11 @@ fun NewHabitScreen(
             existingHabit = habit
             habit?.let {
                 name = it.name
+                selectedColorHex = it.colorHex
                 remindersEnabled = it.remindersEnabled
                 reminderHour = it.reminderHour ?: 8
                 reminderMinute = it.reminderMinute ?: 0
                 selectedDays = it.repeatDays.split(",").mapNotNull { d -> d.toIntOrNull() }.toSet()
-                selectedColorHex = it.colorHex
             }
         }
     }
@@ -143,6 +145,7 @@ fun NewHabitScreen(
                 modifier = Modifier.fillMaxWidth()
             )
         }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         SectionCard {
@@ -277,7 +280,13 @@ fun NewHabitScreen(
                         }
 
                         if (remindersEnabled) {
-                            ReminderScheduler.scheduleHabitReminder(context, savedHabit)
+                            if (ReminderScheduler.canScheduleExactAlarms(context)) {
+                                ReminderScheduler.scheduleHabitReminder(context, savedHabit)
+                            } else {
+                                pendingExactAlarmHabit = savedHabit
+                                showExactAlarmDialog = true
+                                return@launch
+                            }
                         } else {
                             ReminderScheduler.cancelHabitReminder(context, savedHabit.id)
                         }
@@ -313,6 +322,27 @@ fun NewHabitScreen(
                 TextButton(onClick = { showReminderTimePicker = false }) { Text("Cancel") }
             },
             text = { TimePicker(state = timePickerState) }
+        )
+    }
+
+    if (showExactAlarmDialog) {
+        AlertDialog(
+            onDismissRequest = { showExactAlarmDialog = false },
+            title = { Text("Allow exact alarms") },
+            text = { Text("To send reminders at the exact time you chose, MyHabit needs permission to schedule exact alarms.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    context.startActivity(ReminderScheduler.buildExactAlarmSettingsIntent(context))
+                    showExactAlarmDialog = false
+                }) { Text("Open Settings") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    pendingExactAlarmHabit?.let { ReminderScheduler.scheduleHabitReminder(context, it) }
+                    showExactAlarmDialog = false
+                    onHabitSaved()
+                }) { Text("Not now") }
+            }
         )
     }
 
@@ -390,6 +420,21 @@ private fun RoundIconButton(
 }
 
 @Composable
+private fun ColorSwatch(color: androidx.compose.ui.graphics.Color, isSelected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .clip(CircleShape)
+            .background(color)
+            .then(
+                if (isSelected) Modifier.border(3.dp, MaterialTheme.colorScheme.onBackground, CircleShape)
+                else Modifier
+            )
+            .clickable(onClick = onClick)
+    )
+}
+
+@Composable
 private fun DayCircle(label: String, isSelected: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
@@ -408,18 +453,4 @@ private fun DayCircle(label: String, isSelected: Boolean, onClick: () -> Unit) {
             fontWeight = FontWeight.SemiBold
         )
     }
-}
-@Composable
-private fun ColorSwatch(color: androidx.compose.ui.graphics.Color, isSelected: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(32.dp)
-            .clip(CircleShape)
-            .background(color)
-            .then(
-                if (isSelected) Modifier.border(3.dp, MaterialTheme.colorScheme.onBackground, CircleShape)
-                else Modifier
-            )
-            .clickable(onClick = onClick)
-    )
 }

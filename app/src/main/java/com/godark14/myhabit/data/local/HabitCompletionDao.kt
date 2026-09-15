@@ -24,4 +24,7 @@ interface HabitCompletionDao {
 
     @Query("SELECT COUNT(*) FROM habit_completion")
     suspend fun totalCount(): Int
+
+    @Query("SELECT DISTINCT habitId FROM habit_completion WHERE epochDay = :epochDay")
+    suspend fun getCompletedHabitIdsForDay(epochDay: Long): List<Long>
 }
